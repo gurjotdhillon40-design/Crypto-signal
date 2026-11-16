@@ -17,7 +17,7 @@ import pandas as pd
 
 from data import _get, fetch_fng, fetch_prices
 from indicators import build_table
-from strategy import State, decide, load_rules
+from strategy import State, decide, load_rules, take_out_on_sale
 
 JOURNAL = Path(__file__).parent / "journal.csv"
 FIELDS = ["logged_at", "type", "date", "coin", "action", "kind", "price_usd", "fng", "rsi14", "ma200",
@@ -61,9 +61,12 @@ def state_from_journal(journal, coin, coin_cfg, cfg, today):
             if t["kind"] == "dip":
                 st.days_since_dip = (today - date).days
         elif t["action"] == "SELL":
+            avg = st.cost / st.units if st.units else 0
+            out = take_out_on_sale(units, amount, avg, amount / units if units else 0, cfg)
             st.cost -= st.cost * min(units / st.units, 1) if st.units else 0
             st.units = max(st.units - units, 0)
-            st.reserve += amount
+            st.reserve += amount - out
+            st.taken_out += out
             st.days_since_sell = (today - date).days
         st.peak_units = max(st.peak_units, st.units)
         if t["kind"] in ("monthly", "monthly-skip") and date.to_period("M") == pd.Period(today, "M"):
@@ -88,14 +91,15 @@ def signals():
         print(f"   Fear & Greed {row['fng']:.0f} | RSI {row['rsi14']:.0f} | "
               f"200-day average ${row['ma200']:,.2f} ({row['pct_vs_ma200']:+.0f}%)")
         held = f"{st.units:.6g} {coin}, average cost {st.cost / st.units:,.2f} {cur}" if st.units else "nothing yet"
-        print(f"   You hold: {held} | reserve {st.reserve:,.2f} {cur}")
+        print(f"   You hold: {held} | reserve {st.reserve:,.2f} {cur} | profit taken out {st.taken_out:,.2f} {cur}")
         suggestions = []
         for a in actions:
             print(f"   - {a['reasons'][0]}")
             if a["action"] == "BUY":
                 suggestions.append(f"buy {a['amount']:.2f} {cur} ({a['kind']})")
             elif a["action"] == "SELL":
-                suggestions.append(f"sell {a['units']:.6g} {coin}, about {a['amount']:.2f} {cur}")
+                suggestions.append(f"sell {a['units']:.6g} {coin}, about {a['amount']:.2f} {cur}"
+                                   + (f", take out {a['take_out']:.2f} {cur} profit" if a["take_out"] else ""))
         for s in suggestions:
             print(f"   -> {s}")
         done = journal[(journal["type"] == "SIGNAL") & (journal["coin"] == coin)

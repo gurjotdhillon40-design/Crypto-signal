@@ -1,4 +1,4 @@
-"""Backtest the monthly plan in rules.yaml against buying the full deposit every month.
+"""Backtest the monthly plan (value includes profit taken out on big wins) in rules.yaml against buying the full deposit every month.
 
     python backtest.py                    # from when Fear & Greed data exists (2018)
     python backtest.py --start 2023-01-01 # any sub-period
@@ -17,7 +17,7 @@ import pandas as pd
 
 from data import fetch_fng, fetch_prices
 from indicators import build_table
-from strategy import State, decide, load_rules
+from strategy import State, decide, load_rules, take_out_on_sale
 
 OUT = Path(__file__).parent / "output"
 
@@ -44,9 +44,11 @@ def run_plan(df, coin_cfg, cfg):
             else:
                 units = min(a["units"], st.units)
                 amount = units * row["open"] * (1 - fee)
+                out = take_out_on_sale(units, amount, st.cost / st.units, row["open"], cfg)
                 st.cost -= st.cost * units / st.units
                 st.units -= units
-                st.reserve += amount
+                st.reserve += amount - out
+                st.taken_out += out
             st.peak_units = max(st.peak_units, st.units)
             trades.append({"date": date, "action": a["action"], "kind": a["kind"],
                            "price": row["open"], "amount": round(amount, 2)})
@@ -60,8 +62,8 @@ def run_plan(df, coin_cfg, cfg):
         if any(a["kind"] == "sell" for a in actions):
             last_sell = i
         pending = [a for a in actions if a["action"] != "HOLD"]
-        days.append({"date": date, "value": st.reserve + st.units * row["close"],
-                     "deposited": deposited, "reserve": st.reserve})
+        days.append({"date": date, "value": st.reserve + st.units * row["close"] + st.taken_out,
+                     "deposited": deposited, "reserve": st.reserve, "taken_out": st.taken_out})
     return pd.DataFrame(days).set_index("date"), trades
 
 
@@ -74,7 +76,8 @@ def run_buy_everything(df, coin_cfg, cfg):
             month = (date.year, date.month)
             units += coin_cfg["monthly_deposit"] * (1 - fee) / row["open"]
             deposited += coin_cfg["monthly_deposit"]
-        days.append({"date": date, "value": units * row["close"], "deposited": deposited, "reserve": 0.0})
+        days.append({"date": date, "value": units * row["close"], "deposited": deposited, "reserve": 0.0,
+                     "taken_out": 0.0})
     return pd.DataFrame(days).set_index("date")
 
 
@@ -85,7 +88,7 @@ def stats(t):
             "worst_vs_deposited_pct": (ratio.min() - 1) * 100,
             "best_vs_deposited_pct": (ratio.max() - 1) * 100,
             "days_underwater_pct": (ratio < 1).mean() * 100,
-            "cash_at_end": t["reserve"].iloc[-1]}
+            "cash_at_end": t["reserve"].iloc[-1], "profit_taken_out": t["taken_out"].iloc[-1]}
 
 
 def main():

@@ -22,7 +22,8 @@ def load_rules(path=None):
 @dataclass
 class State:
     """Your position in one coin. Money and avg_cost are in the same currency as `price`."""
-    reserve: float = 0.0           # deposited money not yet spent, plus sale proceeds
+    reserve: float = 0.0           # deposited money not yet spent, plus sale proceeds kept in the plan
+    taken_out: float = 0.0         # profit taken out of the plan on big wins
     units: float = 0.0
     cost: float = 0.0              # money paid for the units still held
     peak_units: float = 0.0
@@ -101,11 +102,24 @@ def decide(row, st, coin_cfg, cfg, price=None):
                             "reasons": [f"sell rule '{rule['name']}' is true but the last sell was "
                                         f"{st.days_since_sell} days ago (cooldown {sell['cooldown_days']} days)"]})
         else:
-            actions.append({"action": "SELL", "kind": "sell", "units": sellable * rule["tranche_pct"] / 100,
-                            "amount": sellable * rule["tranche_pct"] / 100 * price,
+            units = sellable * rule["tranche_pct"] / 100
+            big = gain >= sell.get("take_out_min_gain_pct", float("inf"))
+            take_out = units * (price - avg) if big else 0.0
+            where = (f"big win: take out the {take_out:.2f} profit, put the rest back in the reserve" if big
+                     else "smaller win: all of it goes back into the reserve")
+            actions.append({"action": "SELL", "kind": "sell", "units": units, "amount": units * price,
+                            "take_out": take_out,
                             "reasons": [f"sell {rule['tranche_pct']}% of sellable position, you are {gain:+.0f}% "
-                                        f"vs average cost: " + "; ".join(why)]})
+                                        f"vs average cost ({where}): " + "; ".join(why)]})
     if not actions:
         actions.append({"action": "HOLD", "kind": "none", "amount": 0,
                         "reasons": ["this month's buy is done and no dip or sell rule is true"]})
     return actions
+
+
+def take_out_on_sale(units, sale_amount, avg_cost, price, cfg):
+    """Part of a sale's proceeds taken out as profit (big wins only)."""
+    gain = (price / avg_cost - 1) * 100 if avg_cost else 0
+    if gain < cfg["sell"].get("take_out_min_gain_pct", float("inf")):
+        return 0.0
+    return max(sale_amount - units * avg_cost, 0.0)

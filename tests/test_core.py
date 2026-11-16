@@ -15,7 +15,7 @@ CFG = {"fee_pct": 0.6,
        "low_rules": [{"name": "fear", "fng_max": 25}],
        "dip_buy": {"rules": [{"name": "extreme fear", "fng_max": 15}], "reserve_pct": 25, "cooldown_days": 14},
        "sell": {"rules": [{"name": "greed", "fng_min": 75, "pct_vs_ma200_min": 40, "tranche_pct": 15}],
-                "min_profit_pct": 20, "core_hold_pct": 25, "cooldown_days": 7}}
+                "min_profit_pct": 20, "core_hold_pct": 25, "cooldown_days": 7, "take_out_min_gain_pct": 100}}
 
 
 def prices(n=400, seed=1):
@@ -129,3 +129,11 @@ def test_alt_backtest_sells_next_open_with_cooldown():
     final, sells, held, _ = backtest_coin(d, ALTS, 0)
     assert sells == 4                                    # signals on days 0, 10, 20, 30
     assert abs(final - held) < 1e-9                      # flat price, no fee: selling changes nothing
+
+
+def test_profit_taken_out_only_on_big_wins():
+    st = State(units=10, cost=1000, peak_units=10, monthly_done=True)          # average cost 100
+    small = decide(row(90, 60, close=150), st, COIN, CFG)[0]                   # +50%
+    assert small["take_out"] == 0
+    big = decide(row(90, 60, close=250), st, COIN, CFG)[0]                     # +150%
+    assert abs(big["take_out"] - big["units"] * 150) < 1e-9                    # profit part only

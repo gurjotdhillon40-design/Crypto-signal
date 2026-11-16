@@ -35,6 +35,9 @@ sell:
     - {name: "extreme greed, price very far above 200-day average", fng_min: 85, pct_vs_ma200_min: 80, tranche_pct: 25}
     - {name: "greed, price far above 200-day average", fng_min: 75, pct_vs_ma200_min: 40, tranche_pct: 15}
   min_profit_pct: 20       # never sell unless price is at least this far above your average cost
+  take_out_min_gain_pct: 100  # big win: price at least this far above average cost -> the PROFIT part
+                              # of the sale is taken out for you; the cost part goes back to the reserve.
+                              # Smaller wins: the whole sale goes back to the reserve.
   core_hold_pct: 25        # share of the largest position ever held that is never sold
   cooldown_days: 7
 
