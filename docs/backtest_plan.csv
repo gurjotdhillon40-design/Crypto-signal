@@ -1,0 +1,7 @@
+coin,approach,from,to,deposited,final_value,profit_pct,worst_vs_deposited_pct,best_vs_deposited_pct,days_underwater_pct,cash_at_end,buys,sells
+SOL,Plan (rules),2022-01-02,2026-11-15,7375.0,9058.3,22.8,-62.5,232.5,36.6,540.2,70,18
+SOL,Buy full deposit monthly,2022-01-02,2026-11-15,7375.0,10160.1,37.8,-77.3,576.5,36.5,0.0,,
+ETH,Plan (rules),2018-02-01,2026-11-15,9275.0,22475.0,142.3,-57.3,613.9,14.6,763.7,120,47
+ETH,Buy full deposit monthly,2018-02-01,2026-11-15,9275.0,30548.0,229.4,-74.3,1608.0,22.1,0.0,,
+BTC,Plan (rules),2018-02-01,2026-11-15,9275.0,25658.6,176.6,-44.6,381.0,12.5,816.8,127,46
+BTC,Buy full deposit monthly,2018-02-01,2026-11-15,9275.0,36929.7,298.2,-54.8,750.5,13.6,0.0,,

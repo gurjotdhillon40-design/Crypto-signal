@@ -1,0 +1,39 @@
+# All rules live here. Change numbers here, never in the code.
+# Plan: deposit 300 a month in total. Buy a regular amount each month, buy more when
+# the market is fearful, buy nothing when it is high, and keep the unspent money as a
+# reserve for deep dips. Sell in tranches only when the market is greedy AND you are in profit.
+
+currency: CAD
+start_month: 2026-11       # first month you deposit; used by daily.py to work out your reserve
+fee_pct: 0.6               # per trade, Coinbase-like
+min_trade: 10              # dip buys smaller than this are not worth the fee and are skipped
+
+coins:                     # deposits add up to 300 a month
+  SOL: {monthly_deposit: 125,  normal_buy: 70, low_buy: 100}
+  ETH: {monthly_deposit: 87.5, normal_buy: 50, low_buy: 70}
+  BTC: {monthly_deposit: 87.5, normal_buy: 50, low_buy: 70}
+
+# Conditions: fng_max, fng_min (Fear & Greed 0-100), rsi_max, rsi_min (RSI 14),
+#             pct_vs_ma200_max, pct_vs_ma200_min (% price is above the 200-day average).
+# Within one rule ALL conditions must be true. Any one rule in a list is enough.
+
+high_rules:                # market is high: skip the monthly buy, money stays in reserve
+  - {name: greed, fng_min: 75}
+  - {name: price far above 200-day average, pct_vs_ma200_min: 40}
+
+low_rules:                 # market is low: the monthly buy uses low_buy instead of normal_buy
+  - {name: fear, fng_max: 25}
+
+dip_buy:                   # extra buy from the reserve, any day, on top of the monthly buy
+  rules:
+    - {name: extreme fear, fng_max: 15}
+  reserve_pct: 25          # share of that coin's reserve to spend each time
+  cooldown_days: 14
+
+sell:
+  rules:                   # strongest first; first match wins
+    - {name: "extreme greed, price very far above 200-day average", fng_min: 85, pct_vs_ma200_min: 80, tranche_pct: 25}
+    - {name: "greed, price far above 200-day average", fng_min: 75, pct_vs_ma200_min: 40, tranche_pct: 15}
+  min_profit_pct: 20       # never sell unless price is at least this far above your average cost
+  core_hold_pct: 25        # share of the largest position ever held that is never sold
+  cooldown_days: 7
