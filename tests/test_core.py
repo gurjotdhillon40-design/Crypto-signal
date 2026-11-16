@@ -86,3 +86,46 @@ def test_benchmark_spends_everything():
     df = build_table(prices()).iloc[200:290]
     b = run_buy_everything(df, COIN, CFG)
     assert b["reserve"].eq(0).all() and b["deposited"].iloc[-1] == 100 * df.index.to_period("M").nunique()
+
+
+# --- altcoin tier ---
+from alts import backtest_coin, status
+
+ALTS = {"sell_rules": [{"name": "run", "pct_vs_ma200_min": 50, "rsi_min": 70, "tranche_pct": 20}],
+        "sell_cooldown_days": 10, "watch": {"gain_7d_pct_min": 30, "volume_ratio_min": 2},
+        "dead_volume_usd_per_day": 50000}
+
+
+def alt_df(n=30, **last):
+    d = pd.DataFrame({"open": 1.0, "close": 1.0, "ma200": 1.0, "rsi14": 50.0, "pct_vs_ma200": 10.0, "fng": np.nan,
+                      "gain_7d_pct": 0.0, "volume_ratio": 1.0, "volume_usd_30d": 1e6},
+                     index=pd.date_range("2024-01-01", periods=n))
+    for k, v in last.items():
+        d.iloc[-1, d.columns.get_loc(k)] = v
+    return d
+
+
+def test_alt_statuses():
+    assert status(alt_df(), ALTS)[0] == "HOLD"
+    assert status(alt_df(pct_vs_ma200=-20), ALTS)[0] == "WEAK"
+    assert status(alt_df(pct_vs_ma200=80, rsi14=80), ALTS)[0] == "SELL"
+    assert status(alt_df(pct_vs_ma200=80, rsi14=60), ALTS)[0] == "HOLD"       # both conditions needed
+    assert status(alt_df(gain_7d_pct=40, volume_ratio=3), ALTS)[0] == "WATCH"
+    assert status(alt_df(volume_usd_30d=1000, pct_vs_ma200=80, rsi14=80), ALTS)[0] == "DEAD"
+    assert status(alt_df(ma200=np.nan), ALTS)[0] == "TOO NEW"
+
+
+def test_alt_sell_seen_for_a_week_then_forgotten():
+    d = alt_df(30)
+    d.iloc[-5, [d.columns.get_loc("pct_vs_ma200"), d.columns.get_loc("rsi14")]] = [80, 80]
+    assert status(d, ALTS)[0] == "SELL"
+    assert status(d, ALTS, lookback=3)[0] == "HOLD"
+
+
+def test_alt_backtest_sells_next_open_with_cooldown():
+    d = alt_df(40)
+    d["pct_vs_ma200"], d["rsi14"] = 80.0, 80.0          # sell rule true every day
+    d["open"] = d["close"] = 2.0
+    final, sells, held, _ = backtest_coin(d, ALTS, 0)
+    assert sells == 4                                    # signals on days 0, 10, 20, 30
+    assert abs(final - held) < 1e-9                      # flat price, no fee: selling changes nothing

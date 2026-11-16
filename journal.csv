@@ -2,3 +2,5 @@ logged_at,type,date,coin,action,kind,price_usd,fng,rsi14,ma200,pct_vs_ma200,reas
 2026-11-16 19:54,SIGNAL,2026-11-15,SOL,BUY,monthly,72.73,10.0,21.3,88.78,-18.1,"monthly buy, larger because market is low: Fear & Greed 10 is at or below 25",buy 100.00 CAD (monthly),,,,
 2026-11-16 19:54,SIGNAL,2026-11-15,ETH,BUY,monthly,1834.54,10.0,26.2,2142.53,-14.4,"monthly buy, larger because market is low: Fear & Greed 10 is at or below 25",buy 70.00 CAD (monthly),,,,
 2026-11-16 19:54,SIGNAL,2026-11-15,BTC,BUY,monthly,65315.35,10.0,24.5,72921.03,-10.4,"monthly buy, larger because market is low: Fear & Greed 10 is at or below 25",buy 70.00 CAD (monthly),,,,
+2026-11-16 20:23,SIGNAL,2026-11-15,OCEAN,DEAD,alt,0.1108,,37,,-11,"only $49,605 traded a day over the last 30 days",,,,,
+2026-11-16 20:23,SIGNAL,2026-11-15,ZETACHAIN,DEAD,alt,0.0286,,26,,-28,"only $8,472 traded a day over the last 30 days",,,,,

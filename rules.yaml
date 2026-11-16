@@ -37,3 +37,17 @@ sell:
   min_profit_pct: 20       # never sell unless price is at least this far above your average cost
   core_hold_pct: 25        # share of the largest position ever held that is never sold
   cooldown_days: 7
+
+# ---------------------------------------------------------------------------
+# Altcoin tier (alts.py). No buy signals here: the job is to catch strength and
+# sell into it in tranches, and to flag coins that are fading or dead.
+alts:
+  coins: [FET, RENDER, INJ, NCT, TIA, WLD, FIL, IO, GRT, ATH, XTZ, HNT, VET, HBAR, OCEAN, ZETACHAIN]
+  sell_rules:                # strongest first; first match wins
+    - {name: "blow-off: price more than double its 200-day average and overbought", pct_vs_ma200_min: 100, rsi_min: 75, tranche_pct: 33}
+    - {name: "strong run: price well above 200-day average and overbought", pct_vs_ma200_min: 50, rsi_min: 70, tranche_pct: 20}
+  sell_cooldown_days: 10
+  watch:                     # early strength: not a sell yet, look at it
+    gain_7d_pct_min: 30
+    volume_ratio_min: 2      # last 7 days' trading volume vs the 90-day average
+  dead_volume_usd_per_day: 50000   # 30-day average below this = nearly nobody trading it
